@@ -71,6 +71,17 @@ async def get_current_user(
     )
 
 
+async def get_optional_current_user(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+) -> Optional[AuthenticatedUser]:
+    if not auth or not auth.credentials:
+        return None
+    try:
+        return await get_current_user(auth)
+    except APIException:
+        return None
+
+
 async def get_current_tenant_id(
     x_tenant_id: Optional[str] = Header(None, alias="X-Tenant-ID"),
     current_user: AuthenticatedUser = Depends(get_current_user),

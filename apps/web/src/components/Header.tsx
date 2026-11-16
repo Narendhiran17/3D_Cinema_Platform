@@ -1,13 +1,21 @@
 import React from 'react';
-import { Film, ShieldCheck, User, LogOut, Building } from 'lucide-react';
+import { Film, ShieldCheck, User, LogOut, Building, Ticket, Shield } from 'lucide-react';
 
 interface HeaderProps {
   currentUser: { name: string; email: string; role: string; tenant?: string } | null;
   onOpenAuth: () => void;
   onLogout: () => void;
+  onOpenTickets?: () => void;
+  onOpenPlatformAdmin?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentUser, onOpenAuth, onLogout }) => {
+export const Header: React.FC<HeaderProps> = ({
+  currentUser,
+  onOpenAuth,
+  onLogout,
+  onOpenTickets,
+  onOpenPlatformAdmin,
+}) => {
   return (
     <header style={{
       display: 'flex',
@@ -39,11 +47,55 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onOpenAuth, onLogou
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#10b981' }}>
           <ShieldCheck size={16} />
           <span>Real-time Inventory Lock</span>
         </div>
+
+        {onOpenTickets && (
+          <button
+            onClick={onOpenTickets}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-main)',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            <Ticket size={15} color="var(--accent-gold)" />
+            <span>My Tickets</span>
+          </button>
+        )}
+
+        {currentUser && currentUser.role === 'PLATFORM_ADMIN' && onOpenPlatformAdmin && (
+          <button
+            onClick={onOpenPlatformAdmin}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(239, 68, 68, 0.15)',
+              border: '1px solid #ef4444',
+              color: '#ef4444',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            <Shield size={15} />
+            <span>Platform Admin</span>
+          </button>
+        )}
 
         {currentUser ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -76,6 +128,7 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onOpenAuth, onLogou
                 color: '#ef4444',
                 padding: '8px',
                 borderRadius: '8px',
+                cursor: 'pointer',
               }}
             >
               <LogOut size={16} />
@@ -92,6 +145,8 @@ export const Header: React.FC<HeaderProps> = ({ currentUser, onOpenAuth, onLogou
               border: '1px solid var(--border)',
               color: 'var(--text-main)',
               padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
             }}
           >
             <User size={16} />

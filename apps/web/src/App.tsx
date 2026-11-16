@@ -7,6 +7,8 @@ import { AuthModal } from './components/AuthModal';
 import { OperatorPanel } from './components/OperatorPanel';
 import { CheckoutModal } from './components/CheckoutModal';
 import { SeatSightlineHUD } from './components/SeatSightlineHUD';
+import { MyTicketsModal } from './components/MyTicketsModal';
+import { PlatformAdminPanel } from './components/PlatformAdminPanel';
 import { fetchShowSeatMap, requestSeatLock, ShowSeatDTO } from './services/api';
 import { calculateViewingMetrics } from './utils/viewSimulator';
 import { Eye, Layers, Compass, Settings } from 'lucide-react';
@@ -20,6 +22,8 @@ export const App: React.FC = () => {
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isOperatorOpen, setIsOperatorOpen] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [isTicketsOpen, setIsTicketsOpen] = useState<boolean>(false);
+  const [isPlatformAdminOpen, setIsPlatformAdminOpen] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{
     name: string;
     email: string;
@@ -100,6 +104,8 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={() => setCurrentUser(null)}
+        onOpenTickets={() => setIsTicketsOpen(true)}
+        onOpenPlatformAdmin={() => setIsPlatformAdminOpen(true)}
       />
 
       {/* Auth Modal */}
@@ -107,6 +113,23 @@ export const App: React.FC = () => {
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onLoginSuccess={(user) => setCurrentUser(user)}
+      />
+
+      {/* Customer Booking History & Cancellation Modal */}
+      <MyTicketsModal
+        isOpen={isTicketsOpen}
+        onClose={() => setIsTicketsOpen(false)}
+        onTicketCancelled={(releasedLabels) => {
+          setSeats((prev) =>
+            prev.map((s) => (releasedLabels.includes(s.label) ? { ...s, status: 'AVAILABLE' } : s))
+          );
+        }}
+      />
+
+      {/* Central Platform Administrator Modal */}
+      <PlatformAdminPanel
+        isOpen={isPlatformAdminOpen}
+        onClose={() => setIsPlatformAdminOpen(false)}
       />
 
       {/* Operator Console Modal */}

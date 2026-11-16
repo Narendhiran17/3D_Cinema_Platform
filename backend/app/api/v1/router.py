@@ -11,6 +11,7 @@ from app.api.v1.endpoints import (
     operator_shows,
     auditoriums,
     websockets,
+    platform_admin,
 )
 
 api_router = APIRouter()
@@ -31,3 +32,7 @@ api_router.include_router(websockets.router)
 api_router.include_router(operator_cinemas.router)
 api_router.include_router(operator_shows.router)
 api_router.include_router(auditoriums.router)
+
+# Central Platform Admin routes (Sprint 10 & 11)
+api_router.include_router(platform_admin.router)
+
