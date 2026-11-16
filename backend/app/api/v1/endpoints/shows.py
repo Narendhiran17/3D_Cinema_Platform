@@ -1,49 +1,47 @@
 from typing import List, Optional
-from datetime import datetime
-from fastapi import APIRouter, Request
-from pydantic import BaseModel
-from app.schemas.common import StandardResponse, ResponseMeta
+from fastapi import APIRouter, Request, status
+from app.api.v1.endpoints.operator_shows import SHOWS_STORE
+from app.core.errors import APIException
+from app.schemas.common import ResponseMeta, StandardResponse
+from app.schemas.show import ShowDetailResponse
 
-router = APIRouter(prefix="/shows", tags=["Shows & Schedules"])
-
-
-class ShowSummary(BaseModel):
-    id: str
-    tenant_id: str
-    cinema_id: str
-    auditorium_id: str
-    movie_id: str
-    movie_title: str
-    starts_at: str
-    ends_at: str
-    timezone: str
-    format: str
-    status: str
+router = APIRouter(prefix="/shows", tags=["Public Shows Discovery"])
 
 
-@router.get("", response_model=StandardResponse[List[ShowSummary]])
-async def list_shows(
+@router.get("", response_model=StandardResponse[List[ShowDetailResponse]])
+async def list_public_shows(
     request: Request,
     cinema_id: Optional[str] = None,
     movie_id: Optional[str] = None,
 ):
     request_id = getattr(request.state, "request_id", None)
-    sample_shows = [
-        ShowSummary(
-            id="show-8801-99ab-cdef",
-            tenant_id="ten-apex-cinemas-01",
-            cinema_id="cin-1001-a1b2-c3d4",
-            auditorium_id="aud-01-prime",
-            movie_id="mov-avatar-3d-001",
-            movie_title="Cosmic Odyssey: 3D Experience",
-            starts_at="2026-11-20T19:30:00Z",
-            ends_at="2026-11-20T22:15:00Z",
-            timezone="America/New_York",
-            format="IMAX_3D",
-            status="PUBLISHED",
-        )
+    published_shows = [
+        ShowDetailResponse(**s)
+        for s in SHOWS_STORE.values()
+        if s["status"] == "PUBLISHED"
+        and (not cinema_id or s["cinema_id"] == cinema_id)
+        and (not movie_id or s["movie_id"] == movie_id)
     ]
+
     return StandardResponse(
-        data=sample_shows,
-        meta=ResponseMeta(request_id=request_id, total=len(sample_shows)),
+        data=published_shows,
+        meta=ResponseMeta(request_id=request_id, total=len(published_shows)),
+    )
+
+
+@router.get("/{show_id}", response_model=StandardResponse[ShowDetailResponse])
+async def get_show_details(show_id: str, request: Request):
+    request_id = getattr(request.state, "request_id", None)
+    show = SHOWS_STORE.get(show_id)
+
+    if not show or show["status"] != "PUBLISHED":
+        raise APIException(
+            code="SHOW_NOT_FOUND",
+            message=f"Show '{show_id}' not found.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    return StandardResponse(
+        data=ShowDetailResponse(**show),
+        meta=ResponseMeta(request_id=request_id),
     )

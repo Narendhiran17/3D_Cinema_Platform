@@ -1,27 +1,13 @@
-from typing import List
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Header, HTTPException, Request, status
-from pydantic import BaseModel, Field
-from app.schemas.common import StandardResponse, ResponseMeta
+from typing import List
+from fastapi import APIRouter, Header, Request, status
+from pydantic import BaseModel
+from app.api.v1.endpoints.operator_shows import SHOWS_STORE, SHOW_SEATS_STORE
+from app.core.errors import APIException
+from app.schemas.common import ResponseMeta, StandardResponse
+from app.schemas.show import ShowSeatInventoryItem, ShowSeatMapResponse
 
 router = APIRouter(tags=["Seat Inventory & 3D Mapping"])
-
-
-class SeatItem(BaseModel):
-    show_seat_id: str
-    seat_id: str
-    label: str
-    seat_type: str
-    price_minor: int
-    status: str
-    version: int
-
-
-class ShowSeatMapData(BaseModel):
-    show_id: str
-    layout_version: int
-    currency: str
-    seats: List[SeatItem]
 
 
 class SeatLockRequest(BaseModel):
@@ -37,35 +23,31 @@ class SeatLockData(BaseModel):
     show_seat_ids: List[str]
 
 
-@router.get("/shows/{show_id}/seat-map", response_model=StandardResponse[ShowSeatMapData])
+@router.get("/shows/{show_id}/seat-map", response_model=StandardResponse[ShowSeatMapResponse])
 async def get_show_seat_map(show_id: str, request: Request):
+    """
+    Returns authoritative show seat inventory with current status, pricing in minor units,
+    and 3D coordinates for visualization.
+    """
     request_id = getattr(request.state, "request_id", None)
-    
-    # Generate standard rows A-E, seats 1-10
-    seats = []
-    for row in ["A", "B", "C", "D", "E"]:
-        for num in range(1, 11):
-            seat_label = f"{row}{num}"
-            seat_type = "PREMIUM" if row in ["D", "E"] else "STANDARD"
-            price = 25000 if seat_type == "PREMIUM" else 18000
-            seats.append(
-                SeatItem(
-                    show_seat_id=f"ss-{show_id}-{seat_label.lower()}",
-                    seat_id=f"seat-{seat_label.lower()}",
-                    label=seat_label,
-                    seat_type=seat_type,
-                    price_minor=price,
-                    status="AVAILABLE",
-                    version=1,
-                )
-            )
+    show = SHOWS_STORE.get(show_id)
+
+    if not show:
+        raise APIException(
+            code="SHOW_NOT_FOUND",
+            message=f"Show '{show_id}' not found.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    seats = SHOW_SEATS_STORE.get(show_id, [])
 
     return StandardResponse(
-        data=ShowSeatMapData(
+        data=ShowSeatMapResponse(
             show_id=show_id,
-            layout_version=1,
+            auditorium_id=show["auditorium_id"],
+            layout_version=show["layout_version"],
             currency="USD",
-            seats=seats,
+            seats=[ShowSeatInventoryItem(**s) for s in seats],
         ),
         meta=ResponseMeta(request_id=request_id),
     )
@@ -77,13 +59,27 @@ async def create_seat_lock(
     request: Request,
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
 ):
-    """Atomic seat lock creation with expiration timer."""
+    """
+    Atomic seat lock creation with expiration timer.
+    """
     request_id = getattr(request.state, "request_id", None)
     expiry = datetime.now(timezone.utc) + timedelta(minutes=10)
 
+    # In Sprint 4/5: Mark seats as HELD in SHOW_SEATS_STORE for this show
+    seats = SHOW_SEATS_STORE.get(payload.show_id, [])
+    for s in seats:
+        if s["show_seat_id"] in payload.show_seat_ids:
+            if s["status"] != "AVAILABLE":
+                raise APIException(
+                    code="SEAT_UNAVAILABLE",
+                    message=f"Seat '{s['label']}' is not available for locking.",
+                    status_code=status.HTTP_409_CONFLICT,
+                )
+            s["status"] = "HELD"
+
     return StandardResponse(
         data=SeatLockData(
-            hold_id="hold-77a8-44b2-99cc",
+            hold_id=f"hold-{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}",
             status="HELD",
             expires_at=expiry.isoformat(),
             show_seat_ids=payload.show_seat_ids,
