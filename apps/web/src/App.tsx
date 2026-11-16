@@ -5,6 +5,7 @@ import { SeatMap2D } from './components/SeatMap2D';
 import { BookingSummaryTray } from './components/BookingSummaryTray';
 import { AuthModal } from './components/AuthModal';
 import { OperatorPanel } from './components/OperatorPanel';
+import { CheckoutModal } from './components/CheckoutModal';
 import { SeatSightlineHUD } from './components/SeatSightlineHUD';
 import { fetchShowSeatMap, requestSeatLock, ShowSeatDTO } from './services/api';
 import { calculateViewingMetrics } from './utils/viewSimulator';
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
   const [isHeld, setIsHeld] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isOperatorOpen, setIsOperatorOpen] = useState<boolean>(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{
     name: string;
     email: string;
@@ -42,7 +44,13 @@ export const App: React.FC = () => {
     );
   };
 
-  const handleHoldSeats = async () => {
+  const handleHoldOrCheckout = async () => {
+    if (isHeld) {
+      // Already held, open checkout modal
+      setIsCheckoutOpen(true);
+      return;
+    }
+
     try {
       const selectedSeatIds = seats
         .filter((s) => selectedSeats.includes(s.label))
@@ -50,10 +58,34 @@ export const App: React.FC = () => {
 
       await requestSeatLock('show-apex-cosmic-001', selectedSeatIds, 'session-client-1');
       setIsHeld(true);
+      setIsCheckoutOpen(true);
     } catch {
-      // Local fallback for offline mode
+      // Local fallback
       setIsHeld(true);
+      setIsCheckoutOpen(true);
     }
+  };
+
+  const handlePaymentSuccess = () => {
+    // Transition locally held seats to CONFIRMED
+    setSeats((prev) =>
+      prev.map((s) =>
+        selectedSeats.includes(s.label) ? { ...s, status: 'CONFIRMED' } : s
+      )
+    );
+    setSelectedSeats([]);
+    setIsHeld(false);
+  };
+
+  // Pricing calculation
+  const calculateTotal = () => {
+    let total = 0;
+    selectedSeats.forEach((seatLabel) => {
+      const s = seats.find((st) => st.label === seatLabel);
+      if (s) total += s.price_minor / 100;
+      else total += 18;
+    });
+    return total;
   };
 
   // Resolve viewing metrics if a seat is currently being previewed
@@ -82,6 +114,15 @@ export const App: React.FC = () => {
         isOpen={isOperatorOpen}
         onClose={() => setIsOperatorOpen(false)}
         tenantName={currentUser?.tenant || 'Apex Cinemas International'}
+      />
+
+      {/* Checkout & Ticket Modal */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        selectedSeats={selectedSeats}
+        totalAmount={calculateTotal()}
+        onPaymentComplete={handlePaymentSuccess}
       />
 
       {/* Show Information & View Mode Toolbar */}
@@ -252,7 +293,7 @@ export const App: React.FC = () => {
       {/* Persistent Bottom Booking Summary Tray */}
       <BookingSummaryTray
         selectedSeats={selectedSeats}
-        onProceedToHold={handleHoldSeats}
+        onProceedToHold={handleHoldOrCheckout}
         isHeld={isHeld}
         holdExpiresInSeconds={600}
       />

@@ -5,6 +5,8 @@ from app.models.cinema import Cinema
 from app.models.auditorium import Auditorium, AuditoriumLayoutVersion, Seat, Seat3DMapping
 from app.models.movie import Movie
 from app.models.show import Show, ShowSeat
+from app.models.booking import SeatLock, Booking, BookingItem
+from app.models.payment import Payment, PaymentAttempt, PaymentWebhookEvent
 
 __all__ = [
     "Base",
@@ -23,4 +25,10 @@ __all__ = [
     "Movie",
     "Show",
     "ShowSeat",
+    "SeatLock",
+    "Booking",
+    "BookingItem",
+    "Payment",
+    "PaymentAttempt",
+    "PaymentWebhookEvent",
 ]
