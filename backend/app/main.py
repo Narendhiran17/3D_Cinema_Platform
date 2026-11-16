@@ -3,7 +3,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.logging import logger
-from app.core.middleware import RequestCorrelationMiddleware
+from app.core.middleware import (
+    RateLimiterMiddleware,
+    RequestCorrelationMiddleware,
+    SecurityHeadersMiddleware,
+)
 from app.core.errors import (
     APIException,
     api_exception_handler,
@@ -38,6 +42,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Production Security Headers Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Rate Limiter Middleware
+app.add_middleware(RateLimiterMiddleware, requests_per_minute=120)
 
 # Request ID Correlation and Logging Middleware
 app.add_middleware(RequestCorrelationMiddleware)
