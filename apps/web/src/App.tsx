@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Auditorium3D } from './components/Auditorium3D';
 import { SeatMap2D } from './components/SeatMap2D';
 import { BookingSummaryTray } from './components/BookingSummaryTray';
+import { AuthModal } from './components/AuthModal';
 import { Eye, Layers, Compass } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -10,6 +11,13 @@ export const App: React.FC = () => {
   const [selectedSeats, setSelectedSeats] = useState<string[]>(['C5', 'C6']);
   const [previewSeat, setPreviewSeat] = useState<string | null>(null);
   const [isHeld, setIsHeld] = useState<boolean>(false);
+  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<{
+    name: string;
+    email: string;
+    role: string;
+    tenant?: string;
+  } | null>(null);
 
   const handleToggleSeat = (label: string) => {
     setSelectedSeats((prev) =>
@@ -24,7 +32,18 @@ export const App: React.FC = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
       {/* Top Navigation */}
-      <Header />
+      <Header
+        currentUser={currentUser}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={() => setCurrentUser(null)}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onLoginSuccess={(user) => setCurrentUser(user)}
+      />
 
       {/* Show Information & View Mode Toolbar */}
       <div style={{
