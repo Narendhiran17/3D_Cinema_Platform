@@ -1,0 +1,26 @@
+{
+  "name": "3d-cinema-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-tenant cinema management and ticket-booking platform with photorealistic 3D seat selection",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:web": "npm --workspace=apps/web run dev",
+    "build:web": "npm --workspace=apps/web run build",
+    "lint": "echo \"Running monorepo linting...\"",
+    "test": "echo \"Running monorepo tests...\""
+  },
+  "keywords": [
+    "cinema",
+    "threejs",
+    "react",
+    "fastapi",
+    "postgresql",
+    "3d-booking"
+  ],
+  "author": "3D Cinema Platform Team",
+  "license": "UNLICENSED"
+}

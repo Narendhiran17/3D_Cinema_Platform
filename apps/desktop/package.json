@@ -1,0 +1,11 @@
+{
+  "name": "@cinema/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@cinema/shared-types": "*"
+  }
+}
