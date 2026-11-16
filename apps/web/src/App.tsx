@@ -4,7 +4,8 @@ import { Auditorium3D } from './components/Auditorium3D';
 import { SeatMap2D } from './components/SeatMap2D';
 import { BookingSummaryTray } from './components/BookingSummaryTray';
 import { AuthModal } from './components/AuthModal';
-import { Eye, Layers, Compass } from 'lucide-react';
+import { OperatorPanel } from './components/OperatorPanel';
+import { Eye, Layers, Compass, Settings } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'3D' | '2D'>('3D');
@@ -12,6 +13,7 @@ export const App: React.FC = () => {
   const [previewSeat, setPreviewSeat] = useState<string | null>(null);
   const [isHeld, setIsHeld] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [isOperatorOpen, setIsOperatorOpen] = useState<boolean>(false);
   const [currentUser, setCurrentUser] = useState<{
     name: string;
     email: string;
@@ -45,6 +47,13 @@ export const App: React.FC = () => {
         onLoginSuccess={(user) => setCurrentUser(user)}
       />
 
+      {/* Operator Console Modal */}
+      <OperatorPanel
+        isOpen={isOperatorOpen}
+        onClose={() => setIsOperatorOpen(false)}
+        tenantName={currentUser?.tenant || 'Apex Cinemas International'}
+      />
+
       {/* Show Information & View Mode Toolbar */}
       <div style={{
         display: 'flex',
@@ -74,8 +83,28 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* View Switcher Controls */}
+        {/* View Switcher Controls & Operator Button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {currentUser && (currentUser.role === 'OPERATOR_ADMIN' || currentUser.role === 'PLATFORM_ADMIN') && (
+            <button
+              onClick={() => setIsOperatorOpen(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 14px',
+                backgroundColor: 'var(--bg-secondary)',
+                color: 'var(--accent-gold)',
+                border: '1px solid var(--accent-gold)',
+                fontWeight: 700,
+                fontSize: '13px',
+              }}
+            >
+              <Settings size={15} />
+              <span>Operator Console</span>
+            </button>
+          )}
+
           {viewMode === '3D' && selectedSeats.length > 0 && (
             <button
               onClick={() => setPreviewSeat((prev) => (prev ? null : selectedSeats[0]))}
