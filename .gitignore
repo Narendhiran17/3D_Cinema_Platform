@@ -57,6 +57,12 @@ pnpm-debug.log*
 # Build outputs
 apps/web/dist/
 apps/desktop/src-tauri/target/
+apps/mobile/android/.gradle/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/android/local.properties
+releases/
+*.apk
 .turbo/
 .next/
 out/
