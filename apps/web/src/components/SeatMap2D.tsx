@@ -1,13 +1,27 @@
 import React from 'react';
+import { ShowSeatDTO } from '../services/api';
 
 interface SeatMap2DProps {
+  seats: ShowSeatDTO[];
   selectedSeats: string[];
   onToggleSeat: (label: string) => void;
+  onPreviewSeat: (seat: ShowSeatDTO) => void;
 }
 
-export const SeatMap2D: React.FC<SeatMap2DProps> = ({ selectedSeats, onToggleSeat }) => {
-  const rows = ['A', 'B', 'C', 'D', 'E'];
-  const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+export const SeatMap2D: React.FC<SeatMap2DProps> = ({
+  seats,
+  selectedSeats,
+  onToggleSeat,
+  onPreviewSeat,
+}) => {
+  // Group seats by row
+  const rowsMap: { [row: string]: ShowSeatDTO[] } = {};
+  seats.forEach((s) => {
+    if (!rowsMap[s.row]) rowsMap[s.row] = [];
+    rowsMap[s.row].push(s);
+  });
+
+  const sortedRows = Object.keys(rowsMap).sort();
 
   return (
     <div style={{
@@ -40,28 +54,32 @@ export const SeatMap2D: React.FC<SeatMap2DProps> = ({ selectedSeats, onToggleSea
 
       {/* Grid of Seats */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        {rows.map((row) => {
-          const isPremium = row === 'D' || row === 'E';
+        {sortedRows.map((row) => {
+          const rowSeats = rowsMap[row].sort((a, b) => parseInt(a.number) - parseInt(b.number));
           return (
             <div key={row} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ width: '20px', fontWeight: 700, color: 'var(--text-muted)' }}>
                 {row}
               </span>
               <div style={{ display: 'flex', gap: '8px' }}>
-                {cols.map((num) => {
-                  const label = `${row}${num}`;
-                  const isSelected = selectedSeats.includes(label);
+                {rowSeats.map((seat, idx) => {
+                  const isSelected = selectedSeats.includes(seat.label);
+                  const isPremium = seat.seat_type === 'PREMIUM';
+                  const isHeld = seat.status === 'HELD';
 
                   let bg = '#10b981';
                   if (isSelected) bg = '#3b82f6';
+                  else if (isHeld) bg = '#f59e0b';
                   else if (isPremium) bg = '#d97706';
 
                   return (
-                    <React.Fragment key={label}>
-                      {num === 6 && <div style={{ width: '24px' }} />}
+                    <React.Fragment key={seat.show_seat_id}>
+                      {idx === 5 && <div style={{ width: '24px' }} />}
                       <button
-                        onClick={() => onToggleSeat(label)}
-                        aria-label={`Seat ${label}, ${isPremium ? 'Premium $25' : 'Standard $18'}, ${isSelected ? 'Selected' : 'Available'}`}
+                        onClick={() => onToggleSeat(seat.label)}
+                        onDoubleClick={() => onPreviewSeat(seat)}
+                        title={`Seat ${seat.label} ($${(seat.price_minor / 100).toFixed(2)}) - Double click to preview 3D view`}
+                        aria-label={`Seat ${seat.label}, ${isPremium ? 'Premium' : 'Standard'} $${(seat.price_minor / 100).toFixed(2)}, ${isSelected ? 'Selected' : 'Available'}`}
                         style={{
                           width: '36px',
                           height: '36px',
@@ -76,7 +94,7 @@ export const SeatMap2D: React.FC<SeatMap2DProps> = ({ selectedSeats, onToggleSea
                           justifyContent: 'center',
                         }}
                       >
-                        {num}
+                        {seat.number}
                       </button>
                     </React.Fragment>
                   );
