@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { Suspense, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Text } from '@react-three/drei';
+import { OrbitControls, Text, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { ShowSeatDTO } from '../services/api';
 
@@ -8,9 +8,13 @@ interface CameraRigProps {
   previewSeat: ShowSeatDTO | null;
 }
 
+const SCREEN_CENTER = new THREE.Vector3(0, 3.95, 2.3);
+const OVERVIEW_POS = new THREE.Vector3(0, 8.5, -20.5);
+const OVERVIEW_LOOK = new THREE.Vector3(0, 3.5, 0);
+
 const CameraRig: React.FC<CameraRigProps> = ({ previewSeat }) => {
-  const targetPos = useRef(new THREE.Vector3(0, 9, 12));
-  const targetLook = useRef(new THREE.Vector3(0, 2, -2));
+  const targetPos = useRef(OVERVIEW_POS.clone());
+  const targetLook = useRef(OVERVIEW_LOOK.clone());
 
   useFrame((state) => {
     if (previewSeat) {
@@ -20,12 +24,12 @@ const CameraRig: React.FC<CameraRigProps> = ({ previewSeat }) => {
         previewSeat.eye_point[1],
         previewSeat.eye_point[2]
       );
-      // Look straight at screen center
-      targetLook.current.set(0, 4.5, -14);
+      // Look straight at CinemaScope screen center
+      targetLook.current.copy(SCREEN_CENTER);
     } else {
       // Overview perspective
-      targetPos.current.set(0, 9, 12);
-      targetLook.current.set(0, 2, -2);
+      targetPos.current.copy(OVERVIEW_POS);
+      targetLook.current.copy(OVERVIEW_LOOK);
     }
 
     // Smooth camera damping / interpolation
@@ -36,35 +40,69 @@ const CameraRig: React.FC<CameraRigProps> = ({ previewSeat }) => {
   return null;
 };
 
-interface CinemaSeatProps {
+/**
+ * Loads the exported photorealistic Blender 3D cinema theater model.
+ */
+const BlenderAuditoriumModel: React.FC = () => {
+  const { scene } = useGLTF('/models/cinema_theatre_auditorium.glb');
+
+  // Ensure shadows and proper materials
+  React.useEffect(() => {
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+  }, [scene]);
+
+  return <primitive object={scene} />;
+};
+
+useGLTF.preload('/models/cinema_theatre_auditorium.glb');
+
+interface InteractiveSeatBeaconProps {
   seat: ShowSeatDTO;
   isSelected: boolean;
   onSelect: (label: string) => void;
   onPreview: (seat: ShowSeatDTO) => void;
 }
 
-const CinemaSeat: React.FC<CinemaSeatProps> = ({
+const InteractiveSeatBeacon: React.FC<InteractiveSeatBeaconProps> = ({
   seat,
   isSelected,
   onSelect,
   onPreview,
 }) => {
   const [hovered, setHovered] = useState(false);
-  const isPremium = seat.seat_type === 'PREMIUM';
   const isHeld = seat.status === 'HELD';
+  const isVIP = seat.seat_type === 'VIP_RECLINER';
+  const isAccessible = seat.seat_type === 'ACCESSIBLE';
 
-  let seatColor = '#10b981'; // Available
-  if (isSelected) seatColor = '#3b82f6'; // Selected
-  else if (isHeld) seatColor = '#f59e0b'; // Held
-  else if (isPremium) seatColor = '#d97706'; // Premium
+  let color = isVIP ? '#eab308' : isAccessible ? '#06b6d4' : '#10b981';
+  let opacity = 0.35;
 
-  if (hovered && !isSelected && !isHeld) {
-    seatColor = '#34d399';
+  if (isSelected) {
+    color = '#3b82f6';
+    opacity = 0.9;
+  } else if (isHeld) {
+    color = '#f59e0b';
+    opacity = 0.7;
+  } else if (hovered) {
+    color = '#34d399';
+    opacity = 0.85;
   }
+
+  // Seat beacon positioned slightly above cushion surface
+  const beaconPos: [number, number, number] = [
+    seat.position[0],
+    seat.position[1] + 0.45,
+    seat.position[2] + 0.05,
+  ];
 
   return (
     <group
-      position={seat.position}
+      position={beaconPos}
       onClick={(e) => {
         e.stopPropagation();
         onSelect(seat.label);
@@ -80,77 +118,41 @@ const CinemaSeat: React.FC<CinemaSeatProps> = ({
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* Seat Cushion */}
-      <mesh position={[0, 0.4, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.65, 0.15, 0.65]} />
-        <meshStandardMaterial color={seatColor} roughness={0.4} metalness={0.1} />
-      </mesh>
-
-      {/* Seat Backrest */}
-      <mesh position={[0, 0.8, -0.25]} rotation={[0.08, 0, 0]} castShadow>
-        <boxGeometry args={[0.65, 0.75, 0.15]} />
-        <meshStandardMaterial color={seatColor} roughness={0.4} metalness={0.1} />
-      </mesh>
-
-      {/* Armrests */}
-      <mesh position={[-0.35, 0.55, 0]} castShadow>
-        <boxGeometry args={[0.08, 0.35, 0.6]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.7} />
-      </mesh>
-      <mesh position={[0.35, 0.55, 0]} castShadow>
-        <boxGeometry args={[0.08, 0.35, 0.6]} />
-        <meshStandardMaterial color="#1e293b" roughness={0.7} />
-      </mesh>
-
-      {/* Seat Pedestal */}
-      <mesh position={[0, 0.18, 0]}>
-        <cylinderGeometry args={[0.05, 0.08, 0.35, 8]} />
-        <meshStandardMaterial color="#0f172a" metalness={0.8} roughness={0.2} />
-      </mesh>
-
-      {/* Seat Label */}
-      <Text
-        position={[0, 1.25, -0.22]}
-        fontSize={0.18}
-        color="#ffffff"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {seat.label}
-      </Text>
-    </group>
-  );
-};
-
-const CinemaScreen: React.FC = () => {
-  return (
-    <group position={[0, 4.5, -14]}>
-      {/* Screen Frame */}
-      <mesh position={[0, 0, -0.1]}>
-        <boxGeometry args={[16.2, 7.2, 0.2]} />
-        <meshStandardMaterial color="#05070a" roughness={0.9} />
-      </mesh>
-
-      {/* Curved Screen Surface */}
-      <mesh receiveShadow>
-        <planeGeometry args={[16, 7, 32, 16]} />
+      {/* Interactive cushion highlight pad */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[0.55, 0.08, 0.52]} />
         <meshStandardMaterial
-          color="#f8fafc"
-          emissive="#e2e8f0"
-          emissiveIntensity={0.25}
+          color={color}
+          transparent
+          opacity={opacity}
+          emissive={color}
+          emissiveIntensity={isSelected || hovered ? 0.6 : 0.15}
           roughness={0.2}
         />
       </mesh>
 
-      {/* Screen Title */}
-      <Text
-        position={[0, 0, 0.05]}
-        fontSize={0.8}
-        color="#090d16"
-        anchorX="center"
-        anchorY="middle"
-      >
-        IMAX • 3D LASER
+      {/* Floating Seat Label when hovered, selected, or VIP */}
+      {(hovered || isSelected || isVIP) && (
+        <group position={[0, 0.45, 0]}>
+          <Text
+            fontSize={hovered || isSelected ? 0.22 : 0.14}
+            color={isSelected ? '#ffffff' : hovered ? '#ffffff' : '#fef08a'}
+            anchorX="center"
+            anchorY="middle"
+          >
+            {seat.label}
+          </Text>
+        </group>
+      )}
+    </group>
+  );
+};
+
+const LoadingFallback: React.FC = () => {
+  return (
+    <group position={[0, 4, 0]}>
+      <Text fontSize={0.6} color="#f59e0b" anchorX="center" anchorY="middle">
+        Loading 3D Cinema Theater...
       </Text>
     </group>
   );
@@ -173,48 +175,47 @@ export const Auditorium3D: React.FC<Auditorium3DProps> = ({
 }) => {
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-      <Canvas shadows camera={{ position: [0, 9, 12], fov: 55 }}>
+      <Canvas shadows camera={{ position: [0, 8.5, -20.5], fov: 55 }}>
         {/* Animated Camera Rig */}
         <CameraRig previewSeat={previewSeat} />
 
         {!previewSeat && (
           <OrbitControls
             maxPolarAngle={Math.PI / 2.05}
-            minDistance={3}
-            maxDistance={25}
-            target={[0, 2, -2]}
+            minDistance={4}
+            maxDistance={35}
+            target={[0, 3.5, 0]}
           />
         )}
 
-        {/* Cinematic Lighting */}
-        <ambientLight intensity={0.4} />
+        {/* Ambient & Architectural Lighting */}
+        <ambientLight intensity={0.55} color="#cbd5e1" />
         <directionalLight
-          position={[5, 12, 10]}
-          intensity={0.85}
+          position={[0, 10, -10]}
+          intensity={0.9}
           castShadow
           shadow-mapSize-width={1024}
           shadow-mapSize-height={1024}
         />
+
+        {/* Projector beam pointing from booth to screen */}
         <spotLight
-          position={[0, 10, -5]}
-          intensity={1.2}
-          angle={0.6}
-          penumbra={0.8}
-          color="#38bdf8"
+          position={[0, 6.2, -18.8]}
+          target-position={[0, 3.95, 2.3]}
+          intensity={2.2}
+          angle={0.45}
+          penumbra={0.7}
+          color="#e0f2fe"
         />
 
-        {/* Curved Screen */}
-        <CinemaScreen />
+        {/* Photorealistic Blender 3D Theater Model */}
+        <Suspense fallback={<LoadingFallback />}>
+          <BlenderAuditoriumModel />
+        </Suspense>
 
-        {/* Auditorium Floor (Graduated slope) */}
-        <mesh position={[0, 0.5, 0]} receiveShadow rotation={[-0.08, 0, 0]}>
-          <boxGeometry args={[16, 0.4, 18]} />
-          <meshStandardMaterial color="#111827" roughness={0.8} />
-        </mesh>
-
-        {/* Dynamic 3D Seats */}
+        {/* Interactive 3D Seat Selection Beacons */}
         {seats.map((seat) => (
-          <CinemaSeat
+          <InteractiveSeatBeacon
             key={seat.show_seat_id}
             seat={seat}
             isSelected={selectedSeats.includes(seat.label)}

@@ -25,6 +25,50 @@ export interface ShowSeatMapResponse {
 }
 
 export async function fetchShowSeatMap(showId: string): Promise<ShowSeatMapResponse> {
+  // 1. First attempt to load real 105-seat layout from cinema_layout_metadata.json (Blender auditorium model)
+  try {
+    const metaRes = await fetch('/models/cinema_layout_metadata.json');
+    if (metaRes.ok) {
+      const meta = await metaRes.json();
+      if (meta && Array.isArray(meta.seats) && meta.seats.length > 0) {
+        const seats: ShowSeatDTO[] = meta.seats.map((s: any) => {
+          const p = s.position; // Blender [x, y, z] -> Three.js [p[0], p[2], -p[1]]
+          const e = s.eye_point; // Blender [x, y, z] -> Three.js [e[0], e[2], -e[1]]
+          const isVIP = s.seat_type === 'VIP_RECLINER';
+          const isAcc = s.seat_type === 'ACCESSIBLE';
+          const priceMinor = isVIP ? 2800 : isAcc ? 1800 : 2000;
+
+          return {
+            show_seat_id: `ss-${showId}-${s.label.toLowerCase()}`,
+            seat_id: s.seat_id,
+            label: s.label,
+            row: s.row_label,
+            number: s.seat_number.toString(),
+            seat_type: s.seat_type,
+            price_minor: priceMinor,
+            currency: 'USD',
+            status: 'AVAILABLE',
+            version: 1,
+            position: [Number(p[0].toFixed(3)), Number(p[2].toFixed(3)), Number((-p[1]).toFixed(3))],
+            eye_point: [Number(e[0].toFixed(3)), Number(e[2].toFixed(3)), Number((-e[1]).toFixed(3))],
+            object_identifier: s.mesh_reference,
+          };
+        });
+
+        return {
+          show_id: showId,
+          auditorium_id: meta.auditorium_id || 'AUD_HORIZON_SCREEN_01',
+          layout_version: meta.layout_version || 1,
+          currency: 'USD',
+          seats,
+        };
+      }
+    }
+  } catch (err) {
+    console.info('Could not load local cinema_layout_metadata.json, trying backend', err);
+  }
+
+  // 2. Fetch from backend API
   try {
     const res = await fetch(`${API_BASE_URL}/shows/${showId}/seat-map`);
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -32,7 +76,7 @@ export async function fetchShowSeatMap(showId: string): Promise<ShowSeatMapRespo
     return json.data;
   } catch (err) {
     console.warn('API server unreachable, using local fallback seed data', err);
-    // Return standard 50-seat fallback
+    // Return standard fallback
     const seats: ShowSeatDTO[] = [];
     const rows = ['A', 'B', 'C', 'D', 'E'];
     for (let rIdx = 0; rIdx < rows.length; rIdx++) {

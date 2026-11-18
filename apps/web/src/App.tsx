@@ -16,7 +16,7 @@ import { Eye, Layers, Compass, Settings } from 'lucide-react';
 export const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<'3D' | '2D'>('3D');
   const [seats, setSeats] = useState<ShowSeatDTO[]>([]);
-  const [selectedSeats, setSelectedSeats] = useState<string[]>(['C5', 'C6']);
+  const [selectedSeats, setSelectedSeats] = useState<string[]>(['D08']);
   const [previewSeat, setPreviewSeat] = useState<ShowSeatDTO | null>(null);
   const [isHeld, setIsHeld] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);

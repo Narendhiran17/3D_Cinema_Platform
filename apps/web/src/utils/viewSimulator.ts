@@ -12,7 +12,7 @@ export interface ViewingMetrics {
  */
 export function calculateViewingMetrics(
   eyePoint: [number, number, number],
-  screenCenter: [number, number, number] = [0.0, 4.5, -14.0]
+  screenCenter: [number, number, number] = [0.0, 3.95, 2.3]
 ): ViewingMetrics {
   const dx = eyePoint[0] - screenCenter[0];
   const dy = eyePoint[1] - screenCenter[1];

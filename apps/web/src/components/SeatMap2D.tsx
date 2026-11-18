@@ -64,22 +64,22 @@ export const SeatMap2D: React.FC<SeatMap2DProps> = ({
               <div style={{ display: 'flex', gap: '8px' }}>
                 {rowSeats.map((seat, idx) => {
                   const isSelected = selectedSeats.includes(seat.label);
-                  const isPremium = seat.seat_type === 'PREMIUM';
+                  const isVIP = seat.seat_type === 'VIP_RECLINER' || seat.seat_type === 'PREMIUM';
+                  const isAccessible = seat.seat_type === 'ACCESSIBLE';
                   const isHeld = seat.status === 'HELD';
 
-                  let bg = '#10b981';
+                  let bg = isVIP ? '#d97706' : isAccessible ? '#06b6d4' : '#10b981';
                   if (isSelected) bg = '#3b82f6';
                   else if (isHeld) bg = '#f59e0b';
-                  else if (isPremium) bg = '#d97706';
 
                   return (
                     <React.Fragment key={seat.show_seat_id}>
-                      {idx === 5 && <div style={{ width: '24px' }} />}
+                      {(idx === 3 || idx === 12) && <div style={{ width: '20px' }} />}
                       <button
                         onClick={() => onToggleSeat(seat.label)}
                         onDoubleClick={() => onPreviewSeat(seat)}
-                        title={`Seat ${seat.label} ($${(seat.price_minor / 100).toFixed(2)}) - Double click to preview 3D view`}
-                        aria-label={`Seat ${seat.label}, ${isPremium ? 'Premium' : 'Standard'} $${(seat.price_minor / 100).toFixed(2)}, ${isSelected ? 'Selected' : 'Available'}`}
+                        title={`Seat ${seat.label} (${seat.seat_type} - $${(seat.price_minor / 100).toFixed(2)}) - Double click to preview 3D sightline`}
+                        aria-label={`Seat ${seat.label}, ${seat.seat_type} $${(seat.price_minor / 100).toFixed(2)}, ${isSelected ? 'Selected' : 'Available'}`}
                         style={{
                           width: '36px',
                           height: '36px',
